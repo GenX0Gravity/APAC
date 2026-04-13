@@ -1,0 +1,27 @@
+# Secrets — never send to Docker build context
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Git
+.git/
+.gitignore
+
+# Docs & tests (not needed in prod image)
+*.md
+test_main.py
+tests/
+
+# OS junk
+.DS_Store
+Thumbs.db
