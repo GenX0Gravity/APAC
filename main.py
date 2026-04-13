@@ -69,12 +69,12 @@ class HealthResponse(BaseModel):
 # ── Helper ────────────────────────────────────────────────────────────────────
 async def run_agent(user_message: str, session_id: str) -> str:
     """Run the ADK agent and return the final text response."""
-    # Ensure session exists
-    session = SESSION_SERVICE.get_session(
+    # Ensure session exists (both methods are async in ADK >= 0.4)
+    session = await SESSION_SERVICE.get_session(
         app_name=APP_NAME, user_id="api_user", session_id=session_id
     )
     if session is None:
-        SESSION_SERVICE.create_session(
+        await SESSION_SERVICE.create_session(
             app_name=APP_NAME, user_id="api_user", session_id=session_id
         )
 
