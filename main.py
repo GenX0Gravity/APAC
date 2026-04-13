@@ -110,7 +110,7 @@ async def health_check():
     return HealthResponse(
         status="healthy",
         agent=root_agent.name,
-        model="gemini-2.0-flash",
+        model="gemini-2.0-flash-lite",
     )
 
 

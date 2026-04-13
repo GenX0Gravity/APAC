@@ -28,7 +28,7 @@ def summarize_text(text: str) -> dict:
 # Create the ADK Agent
 root_agent = Agent(
     name="text_summarizer_agent",
-    model="gemini-2.0-flash",
+    model="gemini-2.0-flash-lite",
     description=(
         "An AI agent that summarizes text. "
         "Given any text input, it returns a concise and accurate summary."
