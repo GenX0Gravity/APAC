@@ -1,13 +1,11 @@
 """
-Text Summarization Agent using Google ADK + Gemini via Vertex AI.
+Text Summarization Agent using Google ADK + Gemini via AI Studio.
 Accepts any text input and returns a concise summary.
-Uses Vertex AI backend (project billing) instead of AI Studio free tier.
 """
 
 import os
 
 from google.adk.agents import Agent
-from google import genai
 
 # Define the summarization tool
 def summarize_text(text: str) -> dict:
@@ -29,19 +27,10 @@ def summarize_text(text: str) -> dict:
     }
 
 
-# Configure client for Vertex AI on Cloud Run (ADC) or AI Studio locally (API key)
-_project = os.environ.get("GOOGLE_CLOUD_PROJECT", "")
-_location = os.environ.get("GOOGLE_CLOUD_REGION", "us-central1")
-
-if _project:
-    genai_client = genai.Client(vertexai=True, project=_project, location=_location)
-else:
-    genai_client = genai.Client()
-
+# ADK reads GOOGLE_API_KEY automatically for AI Studio backend.
 root_agent = Agent(
     name="text_summarizer_agent",
-    model="gemini-2.0-flash",
-    client=genai_client,
+    model="gemini-2.5-flash",
     description=(
         "An AI agent that summarizes text. "
         "Given any text input, it returns a concise and accurate summary."

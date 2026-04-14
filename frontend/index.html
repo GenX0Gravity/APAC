@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Text Summarizer Agent – Powered by Gemini</title>
+  <meta name="description" content="AI-powered text summarization using Google ADK and Gemini on Cloud Run." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #070b14;
+      --surface:   rgba(255,255,255,0.05);
+      --border:    rgba(255,255,255,0.09);
+      --accent1:   #6c63ff;
+      --accent2:   #38bdf8;
+      --accent3:   #a78bfa;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --radius:    16px;
+      --glow:      0 0 40px rgba(108,99,255,0.25);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(108,99,255,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 90%, rgba(56,189,248,0.14) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 60% 40%, rgba(167,139,250,0.10) 0%, transparent 55%),
+        #070b14;
+    }
+
+    /* ── Grid overlay ── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      background: rgba(7,11,20,0.6);
+      position: sticky; top: 0; z-index: 100;
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.15rem; font-weight: 700;
+    }
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      border-radius: 10px;
+      display: grid; place-items: center;
+      font-size: 16px;
+    }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 14px;
+      background: rgba(56,189,248,0.08);
+      border: 1px solid rgba(56,189,248,0.22);
+      border-radius: 99px;
+      font-size: 0.78rem; font-weight: 500;
+      color: var(--accent2);
+      cursor: default;
+      transition: all 0.3s;
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #4ade80;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    .status-dot.loading { background: #f59e0b; animation: none; }
+    .status-dot.error   { background: #f87171; animation: none; }
+
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .5; transform: scale(0.75); }
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 72px 24px 48px;
+      max-width: 700px;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 14px;
+      background: rgba(108,99,255,0.12);
+      border: 1px solid rgba(108,99,255,0.3);
+      border-radius: 99px;
+      font-size: 0.75rem; font-weight: 600;
+      color: var(--accent3);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+    .hero h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #fff 0%, var(--accent2) 50%, var(--accent3) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+    }
+    .hero p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.7;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* ── Main card ── */
+    .card {
+      width: min(780px, 94vw);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(24px);
+      padding: 36px;
+      margin-bottom: 32px;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.4), var(--glow);
+      transition: box-shadow 0.4s;
+    }
+    .card:hover { box-shadow: 0 12px 64px rgba(0,0,0,0.5), 0 0 60px rgba(108,99,255,0.3); }
+
+    /* ── Textarea ── */
+    .field-label {
+      font-size: 0.8rem; font-weight: 600;
+      color: var(--accent3);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 10px; display: block;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      background: rgba(0,0,0,0.28);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      padding: 16px 18px;
+      resize: vertical;
+      transition: border-color 0.25s, box-shadow 0.25s;
+      outline: none;
+    }
+    textarea::placeholder { color: var(--muted); }
+    textarea:focus {
+      border-color: var(--accent1);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.18);
+    }
+
+    /* ── Controls row ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .char-count {
+      font-size: 0.8rem;
+      color: var(--muted);
+      min-width: 80px;
+    }
+    .char-count span { color: var(--accent2); font-weight: 600; }
+
+    .quick-btns {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .quick-btn {
+      padding: 6px 13px;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.75rem; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .quick-btn:hover {
+      border-color: var(--accent1);
+      color: var(--accent3);
+      background: rgba(108,99,255,0.08);
+    }
+
+    /* ── Submit button ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 13px 28px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; font-weight: 600;
+      border: none; border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      box-shadow: 0 4px 20px rgba(108,99,255,0.4);
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(108,99,255,0.55);
+    }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-icon { font-size: 1.1rem; }
+
+    /* ── Result area ── */
+    .result-area {
+      margin-top: 28px;
+      animation: fadeSlide 0.4s ease;
+    }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .result-box {
+      background: rgba(56,189,248,0.05);
+      border: 1px solid rgba(56,189,248,0.2);
+      border-radius: 12px;
+      padding: 20px 22px;
+      font-size: 0.97rem;
+      line-height: 1.75;
+      color: #cbd5e1;
+      position: relative;
+      overflow: hidden;
+    }
+    .result-box::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: linear-gradient(to bottom, var(--accent2), var(--accent3));
+      border-radius: 3px 0 0 3px;
+    }
+
+    .error-box {
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.25);
+      border-radius: 12px;
+      padding: 16px 20px;
+      font-size: 0.9rem;
+      color: #fca5a5;
+    }
+
+    /* ── Copy button ── */
+    .copy-btn {
+      padding: 6px 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.78rem; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover { background: rgba(255,255,255,0.10); color: var(--text); }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .spinning .spinner { display: block; }
+    .spinning .btn-icon { display: none; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── Stats row ── */
+    .stats {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      margin-top: 18px;
+    }
+    .stat-chip {
+      padding: 5px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+    .stat-chip strong { color: var(--text); }
+
+    /* ── Features ── */
+    .features {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      justify-content: center;
+      width: min(780px, 94vw);
+      margin-bottom: 56px;
+    }
+    .feat-card {
+      flex: 1; min-width: 180px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      backdrop-filter: blur(16px);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .feat-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(108,99,255,0.35);
+    }
+    .feat-icon { font-size: 1.6rem; margin-bottom: 10px; }
+    .feat-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
+    .feat-desc  { font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      width: 100%;
+    }
+    footer a { color: var(--accent2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ── */
+    @media (max-width: 560px) {
+      header { padding: 16px 20px; }
+      .card  { padding: 24px 20px; }
+      .controls { flex-direction: column; align-items: flex-start; }
+      .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">✦</div>
+    SummarAI
+  </div>
+  <div class="status-pill" id="statusPill">
+    <div class="status-dot loading" id="statusDot"></div>
+    <span id="statusText">Checking…</span>
+  </div>
+</header>
+
+<!-- ── Hero ───────────────────────────────────────── -->
+<div class="hero">
+  <div class="badge">✦ Powered by Gemini 2.0 Flash</div>
+  <h1>Summarize Any Text<br>in Seconds</h1>
+  <p>Paste an article, essay, or document and let our Gemini-powered ADK agent distill it into crisp, accurate key points.</p>
+</div>
+
+<!-- ── Main Card ──────────────────────────────────── -->
+<div class="card">
+  <label class="field-label" for="inputText">📄 Paste your text</label>
+  <textarea
+    id="inputText"
+    placeholder="Paste any article, report, email, or document here…"
+    spellcheck="false"
+  ></textarea>
+
+  <div class="controls">
+    <div class="char-count">
+      <span id="charCount">0</span> characters
+    </div>
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="loadSample('tech')">Tech Article</button>
+      <button class="quick-btn" onclick="loadSample('science')">Science</button>
+      <button class="quick-btn" onclick="loadSample('business')">Business</button>
+    </div>
+    <button class="btn" id="submitBtn" onclick="summarize()">
+      <div class="spinner"></div>
+      <span class="btn-icon">⚡</span>
+      Summarize
+    </button>
+  </div>
+
+  <!-- Result -->
+  <div id="resultArea" style="display:none;" class="result-area">
+    <div class="result-header">
+      <label class="field-label" style="margin:0">🤖 AI Summary</label>
+      <button class="copy-btn" id="copyBtn" onclick="copySummary()">Copy</button>
+    </div>
+    <div class="result-box" id="resultBox"></div>
+    <div class="stats" id="statsRow"></div>
+  </div>
+
+  <div id="errorArea" style="display:none;" class="result-area">
+    <div class="error-box" id="errorBox"></div>
+  </div>
+</div>
+
+<!-- ── Feature Cards ──────────────────────────────── -->
+<div class="features">
+  <div class="feat-card">
+    <div class="feat-icon">🧠</div>
+    <div class="feat-title">Gemini 2.0 Flash</div>
+    <div class="feat-desc">State-of-the-art model tuned for speed and accuracy on summarization tasks.</div>
+  </div>
+  <div class="feat-card">
+    <div class="feat-icon">☁️</div>
+    <div class="feat-title">Cloud Run</div>
+    <div class="feat-desc">Serverless, auto-scaling backend — zero infrastructure to manage.</div>
+  </div>
+  <div class="feat-card">
+    <div class="feat-icon">⚡</div>
+    <div class="feat-title">Google ADK</div>
+    <div class="feat-desc">Built with the Agent Development Kit for structured, tool-driven AI responses.</div>
+  </div>
+  <div class="feat-card">
+    <div class="feat-icon">🔒</div>
+    <div class="feat-title">Vertex AI</div>
+    <div class="feat-desc">Enterprise-grade AI infrastructure with security and compliance built in.</div>
+  </div>
+</div>
+
+<footer>
+  Built with ♥ using <a href="https://google.github.io/adk-docs/" target="_blank">Google ADK</a> &
+  <a href="https://cloud.google.com/run" target="_blank">Cloud Run</a> ·
+  <a href="https://text-summarizer-agent-f2lr2qo3sq-uc.a.run.app/docs" target="_blank">API Docs</a>
+</footer>
+
+<script>
+  const API = 'https://text-summarizer-agent-f2lr2qo3sq-uc.a.run.app';
+
+  const SAMPLES = {
+    tech: `Google Cloud Run is a fully managed serverless platform that enables developers to run stateless containers without having to manage the underlying infrastructure. It automatically scales from zero to handle incoming requests and scales back down to zero when there is no traffic, ensuring you only pay for the resources you actually use. Cloud Run supports any language, framework, or binary, and integrates seamlessly with other Google Cloud services such as Cloud SQL, Firestore, and Secret Manager. It offers fast deployment, global reach through Google's network, and built-in security features including automatic HTTPS.`,
+    science: `Photosynthesis is the process by which green plants, algae, and some bacteria convert light energy, usually from the Sun, into chemical energy stored in glucose. This process occurs in two main stages: the light-dependent reactions in the thylakoid membranes, where solar energy is captured and used to produce ATP and NADPH, and the light-independent reactions (Calvin cycle) in the stroma, where carbon dioxide is fixed into organic compounds. Photosynthesis is the foundation of most food webs on Earth, producing the oxygen we breathe as a byproduct and sequestering atmospheric CO₂ into biomass.`,
+    business: `Apple Inc. reported record quarterly revenue of $119.6 billion in its first fiscal quarter of 2024, a 2% increase year-over-year, driven by strong sales of the iPhone 15 lineup and continued growth in its Services segment. iPhone revenue grew 5.9% to $69.7 billion, while Services revenue reached an all-time high of $23 billion. Mac and iPad revenues declined slightly due to product cycle timing. CEO Tim Cook highlighted the company's focus on generative AI integration across its product portfolio, indicating significant AI features will be introduced later in 2024. The company announced a $110 billion share buyback program, reflecting confidence in long-term business performance.`
+  };
+
+  // ── Textarea counter
+  document.getElementById('inputText').addEventListener('input', function() {
+    document.getElementById('charCount').textContent = this.value.length.toLocaleString();
+  });
+
+  function loadSample(key) {
+    const ta = document.getElementById('inputText');
+    ta.value = SAMPLES[key];
+    ta.dispatchEvent(new Event('input'));
+    ta.focus();
+  }
+
+  // ── Health check on load
+  async function checkHealth() {
+    const dot  = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    try {
+      const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
+        const data = await res.json();
+        dot.className  = 'status-dot';
+        text.textContent = `${data.model} · Live`;
+      } else {
+        throw new Error('not ok');
+      }
+    } catch {
+      dot.className  = 'status-dot error';
+      text.textContent = 'Service unavailable';
+    }
+  }
+  checkHealth();
+
+  // ── Summarize
+  async function summarize() {
+    const input = document.getElementById('inputText').value.trim();
+    if (input.length < 10) {
+      showError('Please enter at least 10 characters of text to summarize.');
+      return;
+    }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.classList.add('spinning');
+    hideResult(); hideError();
+
+    const t0 = Date.now();
+    try {
+      const res = await fetch(`${API}/summarize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: input, session_id: 'frontend-session' }),
+        signal: AbortSignal.timeout(60000),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Unknown error');
+
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+      showResult(data.summary, input, elapsed);
+    } catch (err) {
+      showError(`Error: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('spinning');
+    }
+  }
+
+  function showResult(summary, original, elapsed) {
+    document.getElementById('resultBox').textContent = summary;
+    const inputWords   = original.trim().split(/\s+/).length;
+    const summaryWords = summary.trim().split(/\s+/).length;
+    const reduction    = Math.round((1 - summaryWords / inputWords) * 100);
+    document.getElementById('statsRow').innerHTML = `
+      <div class="stat-chip">⏱ <strong>${elapsed}s</strong> response</div>
+      <div class="stat-chip">📝 <strong>${inputWords}</strong> input words</div>
+      <div class="stat-chip">✂️ <strong>${summaryWords}</strong> output words</div>
+      <div class="stat-chip">📉 <strong>${reduction}%</strong> reduction</div>
+    `;
+    document.getElementById('resultArea').style.display = 'block';
+  }
+
+  function hideResult() { document.getElementById('resultArea').style.display = 'none'; }
+  function hideError()  { document.getElementById('errorArea').style.display = 'none'; }
+  function showError(msg) {
+    document.getElementById('errorBox').textContent = msg;
+    document.getElementById('errorArea').style.display = 'block';
+  }
+
+  async function copySummary() {
+    const text = document.getElementById('resultBox').textContent;
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  }
+
+  // Allow Ctrl+Enter to submit
+  document.getElementById('inputText').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') summarize();
+  });
+</script>
+</body>
+</html>
