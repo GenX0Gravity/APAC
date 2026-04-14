@@ -464,11 +464,14 @@
 <footer>
   Built with ♥ using <a href="https://google.github.io/adk-docs/" target="_blank">Google ADK</a> &
   <a href="https://cloud.google.com/run" target="_blank">Cloud Run</a> ·
-  <a href="https://text-summarizer-agent-f2lr2qo3sq-uc.a.run.app/docs" target="_blank">API Docs</a>
+  <a href="https://text-summarizer-agent-694414640481.us-central1.run.app/docs" target="_blank">API Docs</a>
 </footer>
 
 <script>
-  const API = 'https://text-summarizer-agent-f2lr2qo3sq-uc.a.run.app';
+  // Auto-detect: use same origin when served from backend, else use Cloud Run URL
+  const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? `${location.protocol}//${location.hostname}:${location.port}`
+    : 'https://text-summarizer-agent-694414640481.us-central1.run.app';
 
   const SAMPLES = {
     tech: `Google Cloud Run is a fully managed serverless platform that enables developers to run stateless containers without having to manage the underlying infrastructure. It automatically scales from zero to handle incoming requests and scales back down to zero when there is no traffic, ensuring you only pay for the resources you actually use. Cloud Run supports any language, framework, or binary, and integrates seamlessly with other Google Cloud services such as Cloud SQL, Firestore, and Secret Manager. It offers fast deployment, global reach through Google's network, and built-in security features including automatic HTTPS.`,

@@ -3,12 +3,18 @@ HTTP server for the Text Summarization Agent.
 Exposes the ADK agent via a REST API, deployable to Cloud Run.
 """
 
+# Load .env FIRST — before any SDK imports read env vars
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from google.adk.runners import Runner
@@ -16,6 +22,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types as genai_types
 
 from agent import root_agent
+
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
@@ -136,9 +143,12 @@ async def summarize(request: SummarizeRequest):
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
-@app.get("/", tags=["System"])
+@app.get("/", tags=["System"], include_in_schema=False)
 async def root():
-    """Root endpoint with usage info."""
+    """Serve the frontend UI."""
+    frontend = os.path.join(os.path.dirname(__file__), "frontend", "index.html")
+    if os.path.exists(frontend):
+        return FileResponse(frontend, media_type="text/html")
     return {
         "service": "Text Summarizer Agent",
         "version": "1.0.0",
