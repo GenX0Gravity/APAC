@@ -1,246 +1,84 @@
-# 🤖 Text Summarizer Agent — ADK + Gemini on Cloud Run
+# 🤖 APAC Workspace Agent — Multi-Agent AI System
 
-A single AI agent that accepts text input and returns a concise summary.
-Built with **Google Agent Development Kit (ADK)**, powered by **Gemini 2.0 Flash**,
-deployed as a stateless HTTP service on **Google Cloud Run**.
+An intelligent, multi-agent workspace assistant built with **Google ADK** and **Gemini 2.0 Flash**. This system helps users manage tasks, calendars, and notes, and provides a universal software execution engine for autonomous real-time workflows.
 
 ---
 
-## Architecture
+## 🌟 Features
 
-```
-Client (HTTP POST)
-       │
-       ▼
-┌─────────────────────────────────┐
-│        Cloud Run Service        │
-│  ┌───────────────────────────┐  │
-│  │   FastAPI HTTP Server     │  │
-│  │   POST /summarize         │  │
-│  └────────────┬──────────────┘  │
-│               │                 │
-│  ┌────────────▼──────────────┐  │
-│  │   ADK Runner              │  │
-│  │   InMemorySessionService  │  │
-│  └────────────┬──────────────┘  │
-│               │                 │
-│  ┌────────────▼──────────────┐  │
-│  │   root_agent (ADK Agent)  │  │
-│  │   model: gemini-2.0-flash │  │
-│  │   tool:  summarize_text() │  │
-│  └────────────┬──────────────┘  │
-└───────────────┼─────────────────┘
-                │
-                ▼
-       Gemini API (Google AI)
-```
+- **Multi-Agent Orchestration**: A primary orchestrator coordinating specialized sub-tools for a seamless user experience.
+- **Universal Software Action Executor**: Dynamically handles arbitrary software tasks (e.g., triggering rollbacks, provisioning servers) by collecting required parameters through interactive dialogue.
+- **SQLite Persistence**: Fully integrated database backend for persisting tasks, calendar events, notes, and action logs.
+- **Automated Scheduling**: Automatically generates and associates Google Meet links with new calendar events.
+- **Modern UI**: A premium, responsive chat interface built with Vanilla JS and CSS.
+- **Cloud Run Ready**: Fully containerized and optimized for Google Cloud Run deployment.
 
 ---
 
-## Project Structure
+## 🏗️ Technical Architecture
 
-```
-adk-agent/
-├── agent/
-│   ├── __init__.py      # Exports root_agent
-│   └── agent.py         # ADK Agent definition + tool
-├── tests/
-│   └── test_main.py     # Unit tests (pytest)
-├── main.py              # FastAPI server + ADK runner
-├── requirements.txt     # Python dependencies
-├── Dockerfile           # Multi-stage Cloud Run image
-├── .dockerignore
-├── .env.example         # Environment variable template
-└── README.md
-```
+- **Engine**: [Google ADK (Agent Development Kit)](https://github.com/google/adk)
+- **Model**: Gemini 2.0 Flash
+- **Framework**: FastAPI (Python 3.12)
+- **Persistence**: SQLite 3
+- **Deployment**: Docker + Google Cloud Run
 
 ---
 
-## Quick Start (Local)
+## 🚀 Getting Started
 
-### Prerequisites
-- Python 3.12+
-- A [Google AI Studio API key](https://aistudio.google.com/apikey)
+### Local Setup
 
-### 1. Clone & install
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/GenX0Gravity/APAC.git
+   cd APAC
+   ```
 
-```bash
-git clone <your-repo>
-cd adk-agent
+2. **Configure Environment**:
+   Create a `.env` file in the root directory:
+   ```env
+   GOOGLE_API_KEY=your_gemini_api_key_here
+   ```
 
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
+3. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### 2. Configure credentials
+4. **Run the Application**:
+   ```bash
+   python main.py
+   ```
+   The application will be available at `http://localhost:8080`.
 
-```bash
-cp .env.example .env
-# Edit .env and set GOOGLE_API_KEY=<your key>
-```
+### Cloud Run Deployment
 
-### 3. Run locally
-
-```bash
-source .env                      # or: export $(cat .env | xargs)
-python main.py
-# Server starts at http://localhost:8080
-```
-
-### 4. Test it
+Deploy directly from source using the Google Cloud SDK:
 
 ```bash
-# Health check
-curl http://localhost:8080/health
-
-# Summarize text
-curl -X POST http://localhost:8080/summarize \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Artificial intelligence is transforming industries worldwide. From healthcare diagnostics to autonomous vehicles, machine learning models are solving complex problems that once required human expertise. However, this rapid advancement also raises important questions about ethics, job displacement, and the need for thoughtful regulation.",
-    "session_id": "my-session"
-  }'
-```
-
-**Expected response:**
-```json
-{
-  "summary": "AI is rapidly transforming industries like healthcare and transportation, but raises ethical and regulatory concerns alongside its benefits.",
-  "session_id": "my-session",
-  "agent_name": "text_summarizer_agent",
-  "status": "success"
-}
+gcloud run deploy workspace-agent --source . --region us-central1 --allow-unauthenticated
 ```
 
 ---
 
-## Deploy to Cloud Run
+## 🛠️ Integrated Tools
 
-### Prerequisites
-- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed & authenticated
-- A GCP project with billing enabled
-
-### Step 1 — Set environment variables
-
-```bash
-export PROJECT_ID="your-gcp-project-id"
-export REGION="us-central1"
-export SERVICE_NAME="text-summarizer-agent"
-export IMAGE="gcr.io/$PROJECT_ID/$SERVICE_NAME"
-```
-
-### Step 2 — Enable required APIs
-
-```bash
-gcloud services enable \
-  run.googleapis.com \
-  cloudbuild.googleapis.com \
-  secretmanager.googleapis.com \
-  --project $PROJECT_ID
-```
-
-### Step 3 — Store API key in Secret Manager
-
-```bash
-echo -n "YOUR_GOOGLE_API_KEY" | \
-  gcloud secrets create GOOGLE_API_KEY \
-    --data-file=- \
-    --project $PROJECT_ID
-```
-
-### Step 4 — Build & push the container
-
-```bash
-gcloud builds submit \
-  --tag $IMAGE \
-  --project $PROJECT_ID
-```
-
-### Step 5 — Deploy to Cloud Run
-
-```bash
-gcloud run deploy $SERVICE_NAME \
-  --image $IMAGE \
-  --platform managed \
-  --region $REGION \
-  --allow-unauthenticated \
-  --set-secrets="GOOGLE_API_KEY=GOOGLE_API_KEY:latest" \
-  --memory 512Mi \
-  --cpu 1 \
-  --min-instances 0 \
-  --max-instances 10 \
-  --port 8080 \
-  --project $PROJECT_ID
-```
-
-### Step 6 — Call your deployed agent
-
-```bash
-SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
-  --region $REGION \
-  --format "value(status.url)" \
-  --project $PROJECT_ID)
-
-curl -X POST "$SERVICE_URL/summarize" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Your long text goes here..."}'
-```
+- **Task Manager**: Add and list actionable items.
+- **Calendar**: Schedule events with auto-generated meeting links.
+- **Knowledge Base**: Save and retrieve persistent notes.
+- **Universal Action Executor**: Perform any generic software or system workflow.
 
 ---
 
-## API Reference
+## 🔒 Security & Best Practices
 
-### `POST /summarize`
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `text` | string | ✅ | Text to summarize (min 10 chars) |
-| `session_id` | string | ❌ | Session identifier (default: `"default"`) |
-
-**Response:**
-```json
-{
-  "summary": "Concise summary of the text.",
-  "session_id": "string",
-  "agent_name": "text_summarizer_agent",
-  "status": "success"
-}
-```
-
-### `GET /health`
-Returns `{ "status": "healthy", "agent": "...", "model": "..." }`
-
-### `GET /docs`
-Interactive Swagger UI (auto-generated by FastAPI)
+- **Session Management**: Uses ADK's `InMemorySessionService` for context tracking.
+- **Non-Root Execution**: Docker container runs as a non-privileged `appuser`.
+- **Environment Isolation**: Sensitive keys are handled via environment variables/Secret Manager.
 
 ---
 
-## Running Tests
+## 📄 License
 
-```bash
-pip install pytest pytest-asyncio httpx
-pytest tests/ -v
-```
-
----
-
-## How It Works
-
-1. **FastAPI** receives `POST /summarize` with a JSON body
-2. An **ADK `Runner`** is instantiated with `root_agent` and an `InMemorySessionService`
-3. The runner sends the user message to the **Gemini 2.0 Flash** model via the ADK `Agent`
-4. The agent may call the `summarize_text` tool (which structures the input), then Gemini generates the summary
-5. The final response event is captured and returned as JSON
-
----
-
-## Key Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| `gemini-2.0-flash` | Fast and cost-efficient for summarization tasks |
-| `InMemorySessionService` | Simple, no external DB needed for stateless Cloud Run |
-| Multi-stage Dockerfile | Smaller final image (~200MB vs ~600MB) |
-| FastAPI over Flask | Async-native, built-in validation, auto Swagger docs |
-| Secret Manager for API key | Avoids hardcoding secrets in env vars or image layers |
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
