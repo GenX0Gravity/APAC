@@ -374,9 +374,78 @@
       .controls { flex-direction: column; align-items: flex-start; }
       .btn { width: 100%; justify-content: center; }
     }
+
+    /* ── Simulation Stage ── */
+    #simulationStage {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #000;
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.8s;
+      color: #fff; text-align: center;
+    }
+    #simImage {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; opacity: 0.6;
+      transition: opacity 1.5s, transform 10s linear;
+    }
+    .sim-content {
+      position: relative; z-index: 1001; max-width: 800px; padding: 40px;
+    }
+    .sim-banner {
+      font-family: 'Space Grotesk', sans-serif; font-size: 3.5rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 4px; margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--accent2), #fff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .sim-narration {
+      font-size: 1.3rem; line-height: 1.8; margin-bottom: 40px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    }
+    .sim-nav {
+      display: flex; gap: 20px; justify-content: center;
+    }
+    .sim-btn {
+      background: rgba(255,255,255,0.1); border: 2px solid #fff;
+      color: #fff; padding: 12px 32px; border-radius: 99px; font-weight: 600;
+      cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s;
+    }
+    .sim-btn:hover { background: #fff; color: #000; }
+    .sim-exit {
+      position: absolute; top: 40px; right: 40px;
+      font-size: 0.9rem; color: rgba(255,255,255,0.5); cursor: pointer;
+    }
+    .sim-exit:hover { color: #fff; }
+    .voice-waves {
+      display: flex; gap: 4px; height: 30px; align-items: flex-end; justify-content: center;
+      margin-top: 20px;
+    }
+    .wave {
+      width: 4px; height: 10%; background: var(--accent2); border-radius: 4px;
+      animation: wave 1s infinite alternate;
+    }
+    @keyframes wave { to { height: 100%; } }
+    .wave:nth-child(2) { animation-delay: 0.2s; }
+    .wave:nth-child(3) { animation-delay: 0.4s; }
+    .wave:nth-child(4) { animation-delay: 0.1s; }
   </style>
 </head>
 <body>
+
+<!-- ── Simulation Stage Overlay ────────────────── -->
+<div id="simulationStage">
+  <div class="sim-exit" onclick="exitSimulation()"><span style="margin-right:8px">✕</span> Exit Experience</div>
+  <img id="simImage" src="" alt="Landmark" />
+  <div class="sim-content">
+    <div class="badge" style="background:rgba(255,255,255,0.1); color:#fff; border-color:#fff">Immersive Experience</div>
+    <div id="simTitle" class="sim-banner">KOLKATA</div>
+    <div id="simNarration" class="sim-narration">Welcome. We are setting the stage for your journey...</div>
+    <div class="voice-waves">
+      <div class="wave"></div><div class="wave"></div><div class="wave"></div><div class="wave"></div>
+    </div>
+    <div id="simNav" class="sim-nav"></div>
+  </div>
+  <audio id="simAudio" loop style="display:none"></audio>
+</div>
 
 <!-- ── Header ─────────────────────────────────────── -->
 <header>
@@ -538,6 +607,11 @@
 
       const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
       showResult(data.reply, input, elapsed);
+
+      // Trigger Simulation if present
+      if (data.simulation_config) {
+        setTimeout(() => startSimulation(data.simulation_config), 1500);
+      }
     } catch (err) {
       showError(`Error: ${err.message}`);
     } finally {
@@ -568,6 +642,86 @@
     const btn = document.getElementById('copyBtn');
     btn.textContent = 'Copied!';
     setTimeout(() => btn.textContent = 'Copy', 2000);
+  }
+
+  // ── Simulation Logic
+  let currentSimConfig = null;
+  let currentSceneIndex = 0;
+
+  function startSimulation(config) {
+    currentSimConfig = config;
+    currentSceneIndex = 0;
+    
+    document.title = `${config.location} Tour | Immersive`;
+    const stage = document.getElementById('simulationStage');
+    stage.style.display = 'flex';
+    setTimeout(() => stage.style.opacity = '1', 10);
+    
+    // Start Music
+    const audio = document.getElementById('simAudio');
+    audio.src = config.music_url;
+    audio.volume = 0.3;
+    audio.play().catch(e => console.log("Audio autoplay blocked - waiting for interaction"));
+
+    renderScene(0);
+  }
+
+  function renderScene(idx) {
+    const scene = currentSimConfig.scenes[idx];
+    const img = document.getElementById('simImage');
+    const title = document.getElementById('simTitle');
+    const narr = document.getElementById('simNarration');
+    const nav = document.getElementById('simNav');
+
+    // Visual Transition
+    img.style.opacity = '0';
+    img.style.transform = 'scale(1)';
+    setTimeout(() => {
+      img.src = scene.image;
+      img.style.opacity = '0.6';
+      img.style.transform = 'scale(1.1)';
+    }, 500);
+
+    title.textContent = scene.name;
+    narr.textContent = scene.narration;
+
+    // Voice Narration
+    speak(scene.narration);
+
+    // Nav
+    nav.innerHTML = '';
+    if (idx < currentSimConfig.scenes.length - 1) {
+      const btn = document.createElement('button');
+      btn.className = 'sim-btn';
+      btn.textContent = `Continue to ${currentSimConfig.scenes[idx+1].name}`;
+      btn.onclick = () => renderScene(idx + 1);
+      nav.appendChild(btn);
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'sim-btn';
+      btn.textContent = "Finish Journey";
+      btn.onclick = exitSimulation;
+      nav.appendChild(btn);
+    }
+  }
+
+  function speak(text) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.1;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function exitSimulation() {
+    window.speechSynthesis.cancel();
+    document.getElementById('simAudio').pause();
+    const stage = document.getElementById('simulationStage');
+    stage.style.opacity = '0';
+    setTimeout(() => {
+      stage.style.display = 'none';
+      document.title = 'APAC Workspace Agent | AI-Powered Productivity';
+    }, 800);
   }
 
   // Allow Ctrl+Enter to submit

@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -54,6 +55,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static assets for simulation images
+if os.path.exists("assets"):
+    app.mount("/assets", StaticFiles(directory="assets"), name="assets")
+
 # ── Request / Response Models ─────────────────────────────────────────────────
 class ChatRequest(BaseModel):
     text: str = Field(..., min_length=2, description="User instruction or message")
@@ -65,6 +70,7 @@ class ChatResponse(BaseModel):
     session_id: str
     agent_name: str
     status: str = "success"
+    simulation_config: Optional[Dict[str, Any]] = Field(default=None, description="Configuration for immersive experiences")
 
 
 class HealthResponse(BaseModel):
@@ -131,11 +137,28 @@ async def chat(request: ChatRequest):
     """
     try:
         logger.info(f"Chat request | session={request.session_id} | chars={len(request.text)}")
+        
+        # We handle the agent run
+        # Note: In a production setup, we'd extract the tool call results 
+        # specifically if they trigger a simulation state.
         reply = await run_agent(request.text, request.session_id)
+        
+        # Check if the result implies a simulation (highly simplified for the hackathon)
+        sim_config = None
+        if "SIMULATION_CONFIG:" in reply:
+            parts = reply.split("SIMULATION_CONFIG:")
+            reply = parts[0].strip()
+            try:
+                import json
+                sim_config = json.loads(parts[1].strip())
+            except:
+                pass
+
         return ChatResponse(
             reply=reply,
             session_id=request.session_id,
             agent_name=root_agent.name,
+            simulation_config=sim_config
         )
     except Exception as e:
         logger.error(f"Agent error: {e}", exc_info=True)
