@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Text Summarizer Agent – Powered by Gemini</title>
-  <meta name="description" content="AI-powered text summarization using Google ADK and Gemini on Cloud Run." />
+  <title>Multi-Agent Coordinator – Powered by Gemini</title>
+  <meta name="description" content="AI-powered workspace coordination using Google ADK and Gemini." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
   <style>
@@ -382,7 +382,7 @@
 <header>
   <div class="logo">
     <div class="logo-icon">✦</div>
-    SummarAI
+    Workspace AI
   </div>
   <div class="status-pill" id="statusPill">
     <div class="status-dot loading" id="statusDot"></div>
@@ -392,17 +392,17 @@
 
 <!-- ── Hero ───────────────────────────────────────── -->
 <div class="hero">
-  <div class="badge">✦ Powered by Gemini 2.0 Flash</div>
-  <h1>Summarize Any Text<br>in Seconds</h1>
-  <p>Paste an article, essay, or document and let our Gemini-powered ADK agent distill it into crisp, accurate key points.</p>
+  <div class="badge">✦ Multi-Agent System</div>
+  <h1>Your Intelligent<br>Workspace Assistant</h1>
+  <p>Ask the orchestrator to schedule meetings, manage your tasks, and save notes in one cohesive workflow.</p>
 </div>
 
 <!-- ── Main Card ──────────────────────────────────── -->
 <div class="card">
-  <label class="field-label" for="inputText">📄 Paste your text</label>
+  <label class="field-label" for="inputText">📄 How can I help you?</label>
   <textarea
     id="inputText"
-    placeholder="Paste any article, report, email, or document here…"
+    placeholder="E.g., Schedule a meeting with Alice for tomorrow, add a task to prepare the slides, and note that she likes oat milk..."
     spellcheck="false"
   ></textarea>
 
@@ -411,14 +411,14 @@
       <span id="charCount">0</span> characters
     </div>
     <div class="quick-btns">
-      <button class="quick-btn" onclick="loadSample('tech')">Tech Article</button>
-      <button class="quick-btn" onclick="loadSample('science')">Science</button>
-      <button class="quick-btn" onclick="loadSample('business')">Business</button>
+      <button class="quick-btn" onclick="loadSample('workflow')">Full Workflow</button>
+      <button class="quick-btn" onclick="loadSample('software')">Software Action</button>
+      <button class="quick-btn" onclick="loadSample('notes')">Save Note</button>
     </div>
-    <button class="btn" id="submitBtn" onclick="summarize()">
+    <button class="btn" id="submitBtn" onclick="chat()">
       <div class="spinner"></div>
       <span class="btn-icon">⚡</span>
-      Summarize
+      Run Agent
     </button>
   </div>
 
@@ -474,9 +474,9 @@
     : 'https://text-summarizer-agent-694414640481.us-central1.run.app';
 
   const SAMPLES = {
-    tech: `Google Cloud Run is a fully managed serverless platform that enables developers to run stateless containers without having to manage the underlying infrastructure. It automatically scales from zero to handle incoming requests and scales back down to zero when there is no traffic, ensuring you only pay for the resources you actually use. Cloud Run supports any language, framework, or binary, and integrates seamlessly with other Google Cloud services such as Cloud SQL, Firestore, and Secret Manager. It offers fast deployment, global reach through Google's network, and built-in security features including automatic HTTPS.`,
-    science: `Photosynthesis is the process by which green plants, algae, and some bacteria convert light energy, usually from the Sun, into chemical energy stored in glucose. This process occurs in two main stages: the light-dependent reactions in the thylakoid membranes, where solar energy is captured and used to produce ATP and NADPH, and the light-independent reactions (Calvin cycle) in the stroma, where carbon dioxide is fixed into organic compounds. Photosynthesis is the foundation of most food webs on Earth, producing the oxygen we breathe as a byproduct and sequestering atmospheric CO₂ into biomass.`,
-    business: `Apple Inc. reported record quarterly revenue of $119.6 billion in its first fiscal quarter of 2024, a 2% increase year-over-year, driven by strong sales of the iPhone 15 lineup and continued growth in its Services segment. iPhone revenue grew 5.9% to $69.7 billion, while Services revenue reached an all-time high of $23 billion. Mac and iPad revenues declined slightly due to product cycle timing. CEO Tim Cook highlighted the company's focus on generative AI integration across its product portfolio, indicating significant AI features will be introduced later in 2024. The company announced a $110 billion share buyback program, reflecting confidence in long-term business performance.`
+    workflow: `Schedule a meeting with the design team for tomorrow at 2 PM. Also, add a task to "Prepare wireframes" due tomorrow, and leave a note saying "Project X scope is locked."`,
+    software: `I need you to provision a new testing server using the action executor. Call it 'test-box-alpha'.`,
+    notes: `Please save a note that the API key expires next week.`
   };
 
   // ── Textarea counter
@@ -511,11 +511,11 @@
   }
   checkHealth();
 
-  // ── Summarize
-  async function summarize() {
+  // ── Chat
+  async function chat() {
     const input = document.getElementById('inputText').value.trim();
-    if (input.length < 10) {
-      showError('Please enter at least 10 characters of text to summarize.');
+    if (input.length < 2) {
+      showError('Please enter an instruction.');
       return;
     }
 
@@ -526,7 +526,7 @@
 
     const t0 = Date.now();
     try {
-      const res = await fetch(`${API}/summarize`, {
+      const res = await fetch(`${API}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: input, session_id: 'frontend-session' }),
@@ -537,7 +537,7 @@
       if (!res.ok) throw new Error(data.detail || 'Unknown error');
 
       const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      showResult(data.summary, input, elapsed);
+      showResult(data.reply, input, elapsed);
     } catch (err) {
       showError(`Error: ${err.message}`);
     } finally {
@@ -546,16 +546,11 @@
     }
   }
 
-  function showResult(summary, original, elapsed) {
-    document.getElementById('resultBox').textContent = summary;
-    const inputWords   = original.trim().split(/\s+/).length;
-    const summaryWords = summary.trim().split(/\s+/).length;
-    const reduction    = Math.round((1 - summaryWords / inputWords) * 100);
+  function showResult(reply, original, elapsed) {
+    document.getElementById('resultBox').textContent = reply;
     document.getElementById('statsRow').innerHTML = `
-      <div class="stat-chip">⏱ <strong>${elapsed}s</strong> response</div>
-      <div class="stat-chip">📝 <strong>${inputWords}</strong> input words</div>
-      <div class="stat-chip">✂️ <strong>${summaryWords}</strong> output words</div>
-      <div class="stat-chip">📉 <strong>${reduction}%</strong> reduction</div>
+      <div class="stat-chip">⏱ <strong>${elapsed}s</strong> execution time</div>
+      <div class="stat-chip">🤖 Multi-Agent Tools Executed</div>
     `;
     document.getElementById('resultArea').style.display = 'block';
   }
@@ -577,7 +572,7 @@
 
   // Allow Ctrl+Enter to submit
   document.getElementById('inputText').addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') summarize();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') chat();
   });
 </script>
 </body>

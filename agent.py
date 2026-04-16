@@ -1,46 +1,40 @@
-"""
-Text Summarization Agent using Google ADK + Gemini via AI Studio.
-Accepts any text input and returns a concise summary.
-"""
-
 import os
-
 from google.adk.agents import Agent
+from mcp_tools import (
+    add_task, list_tasks,
+    schedule_event, list_events,
+    add_note, list_notes,
+    execute_software_action
+)
 
-# Define the summarization tool
-def summarize_text(text: str) -> dict:
-    """
-    Summarizes the provided text into a concise, clear summary.
+# ── Sub-Agents definitions ──
 
-    Args:
-        text: The input text to summarize.
+# In our current setup, the root orchestrator directly accesses all MCP tools,
+# dynamically shifting between scopes without needing standalone Agent objects
+# to represent sub-tasks, making it extremely lightweight for Cloud Run!
 
-    Returns:
-        A dictionary containing the summary and metadata.
-    """
-    # The agent itself (Gemini) will perform the summarization.
-    # This tool acts as the structured entry point.
-    return {
-        "status": "success",
-        "input_length": len(text.split()),
-        "text": text,
-    }
-
-
-# ADK reads GOOGLE_API_KEY automatically for AI Studio backend.
+# The orchestrator agent
 root_agent = Agent(
-    name="text_summarizer_agent",
+    name="primary_orchestrator",
     model="gemini-2.5-flash",
     description=(
-        "An AI agent that summarizes text. "
-        "Given any text input, it returns a concise and accurate summary."
+        "Primary Orchestrator Agent. Handles complex multi-step workflows by "
+        "interacting with task, calendar, and notes tools (acting as subsystems)."
     ),
     instruction=(
-        "You are a professional text summarization assistant. "
-        "When the user provides text to summarize, use the summarize_text tool "
-        "to process it, then provide a clear, concise summary that captures "
-        "the key points. Keep summaries to 2-3 sentences unless the text is very long. "
-        "Always respond in a structured, helpful manner."
+        "You are an interactive AI Workspace Assistant. "
+        "You perform actual tasks by calling your integrated tools (Task Manager, Calendar, Notes, and a Universal Software Action Executor).\n\n"
+        "RULES:\n"
+        "1. DO NOT guess or hallucinate missing information.\n"
+        "2. If requested to perform ANY real-time task (e.g. provision a server, query a database, deploy code, schedule a meeting, run scripts), deduce the logically required parameters for that task. If ANY parameters are missing, you MUST ask the user for them FIRST before proceeding.\n"
+        "3. Keep your clarifying questions natural and conversational.\n"
+        "4. Once you have all required parameters, execute the dedicated tool (if it relates to Calendar, Notes, or Tasks). For ALL other generic software or real-time tasks, use `execute_software_action`.\n"
+        "5. After successfully executing a tool, provide a friendly final message explicitly sharing the generated data (event links, execution parameters, ref IDs) so the user knows you authentically completed it.\n"
     ),
-    tools=[summarize_text],
+    tools=[
+        add_task, list_tasks,
+        schedule_event, list_events,
+        add_note, list_notes,
+        execute_software_action
+    ],
 )

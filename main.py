@@ -1,5 +1,5 @@
 """
-HTTP server for the Text Summarization Agent.
+HTTP server for the Multi-Agent Workspace system.
 Exposes the ADK agent via a REST API, deployable to Cloud Run.
 """
 
@@ -30,19 +30,19 @@ logger = logging.getLogger(__name__)
 
 # ── ADK Session Service ───────────────────────────────────────────────────────
 SESSION_SERVICE = InMemorySessionService()
-APP_NAME = "text-summarizer-agent"
+APP_NAME = "workspace-agent"
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Text Summarizer Agent starting up...")
+    logger.info("Workspace Agent starting up...")
     yield
-    logger.info("Text Summarizer Agent shutting down...")
+    logger.info("Workspace Agent shutting down...")
 
 # ── FastAPI App ───────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="Text Summarizer Agent",
-    description="An AI-powered text summarization agent built with Google ADK and Gemini.",
+    title="Workspace Agent",
+    description="An AI-powered workspace agent built with Google ADK and Gemini.",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -55,13 +55,13 @@ app.add_middleware(
 )
 
 # ── Request / Response Models ─────────────────────────────────────────────────
-class SummarizeRequest(BaseModel):
-    text: str = Field(..., min_length=10, description="Text to summarize (min 10 chars)")
+class ChatRequest(BaseModel):
+    text: str = Field(..., min_length=2, description="User instruction or message")
     session_id: str = Field(default="default", description="Optional session identifier")
 
 
-class SummarizeResponse(BaseModel):
-    summary: str
+class ChatResponse(BaseModel):
+    reply: str
     session_id: str
     agent_name: str
     status: str = "success"
@@ -121,20 +121,19 @@ async def health_check():
     )
 
 
-@app.post("/summarize", response_model=SummarizeResponse, tags=["Agent"])
-async def summarize(request: SummarizeRequest):
+@app.post("/chat", response_model=ChatResponse, tags=["Agent"])
+async def chat(request: ChatRequest):
     """
-    Summarize the provided text using the Gemini-powered ADK agent.
+    Send an instruction to the Primary Orchestrator Agent.
 
-    - **text**: The input text you want summarized
+    - **text**: The input message or instruction
     - **session_id**: Optional identifier to maintain conversation context
     """
     try:
-        logger.info(f"Summarize request | session={request.session_id} | chars={len(request.text)}")
-        prompt = f"Please summarize the following text:\n\n{request.text}"
-        summary = await run_agent(prompt, request.session_id)
-        return SummarizeResponse(
-            summary=summary,
+        logger.info(f"Chat request | session={request.session_id} | chars={len(request.text)}")
+        reply = await run_agent(request.text, request.session_id)
+        return ChatResponse(
+            reply=reply,
             session_id=request.session_id,
             agent_name=root_agent.name,
         )
@@ -150,10 +149,10 @@ async def root():
     if os.path.exists(frontend):
         return FileResponse(frontend, media_type="text/html")
     return {
-        "service": "Text Summarizer Agent",
+        "service": "Multi-Agent Coordinator",
         "version": "1.0.0",
         "endpoints": {
-            "POST /summarize": "Summarize input text",
+            "POST /chat": "Interact with the Orchestrator",
             "GET /health": "Health check",
             "GET /docs": "Interactive API docs (Swagger UI)",
         },
