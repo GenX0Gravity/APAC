@@ -20,7 +20,6 @@ COPY main.py .
 COPY agent.py .
 COPY database.py .
 COPY mcp_tools.py .
-COPY experience_engine.py .
 COPY assets/ ./assets/
 COPY frontend/ ./frontend/
 
