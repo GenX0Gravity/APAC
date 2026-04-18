@@ -158,25 +158,3 @@ def execute_software_action(action_name: str, parameters: str) -> str:
             return f"Action '{action_name}' executed successfully with params: {parameters}. Ref ID: {cursor.lastrowid}"
     except Exception as e:
         return f"Error executing software action: {e}"
-
-# --- Immersive Simulation Launcher ---
-
-def launch_immersive_tour(location: str) -> str:
-    """
-    Launches a high-fidelity immersive simulation for a specific location or tour.
-    Specifically optimized for 'Kolkata'.
-    """
-    if location.lower() == "kolkata":
-        config = {
-            "type": "tour",
-            "location": "Kolkata",
-            "music_url": "https://cdn.pixabay.com/download/audio/2022/02/22/audio_d0c6ff2120.mp3?filename=indian-instrumental-music-classical-sitar-and-tabla-11442.mp3",
-            "scenes": [
-                {"name": "Victoria Memorial", "image": "/assets/victoria.png", "narration": "Welcome to the grand Victoria Memorial, a marble marvel that stands as a testament to Kolkata's regal history. The sun is setting, casting a golden glow over the gardens."},
-                {"name": "Howrah Bridge", "image": "/assets/howrah.png", "narration": "Next, we arrive at the Howrah Bridge. This engineering masterpiece connects the city over the Hooghly River, shimmering brilliantly against the night sky."},
-                {"name": "Dakshineswar Temple", "image": "/assets/dakshineswar.png", "narration": "Our journey concludes at the serene Dakshineswar Kali Temple. Feel the peaceful atmosphere by the river as the evening prayers begin."}
-            ]
-        }
-        import json
-        return f"SIMULATION_CONFIG: {json.dumps(config)}"
-    return f"I'm sorry, I don't have an immersive tour configuration for '{location}' yet."

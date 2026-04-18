@@ -20,8 +20,9 @@ COPY main.py .
 COPY agent.py .
 COPY database.py .
 COPY mcp_tools.py .
-COPY frontend/ ./frontend/
+COPY experience_engine.py .
 COPY assets/ ./assets/
+COPY frontend/ ./frontend/
 
 # Cloud Run injects PORT at runtime; default to 8080
 ENV PORT=8080

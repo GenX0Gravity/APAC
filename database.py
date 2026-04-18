@@ -68,3 +68,32 @@ def get_connection():
 
 # Ensure DB is initialized when this module is run or imported
 init_db()
+
+def get_full_state():
+    """Fetches the state from tasks, calendar_events, notes, and action_logs."""
+    try:
+        with get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT * FROM tasks ORDER BY created_at DESC")
+            tasks = [dict(row) for row in cursor.fetchall()]
+            
+            cursor.execute("SELECT * FROM calendar_events ORDER BY created_at DESC")
+            events = [dict(row) for row in cursor.fetchall()]
+            
+            cursor.execute("SELECT * FROM notes ORDER BY created_at DESC")
+            notes = [dict(row) for row in cursor.fetchall()]
+            
+            cursor.execute("SELECT * FROM action_logs ORDER BY created_at DESC")
+            logs = [dict(row) for row in cursor.fetchall()]
+            
+            return {
+                "tasks": tasks,
+                "calendar_events": events,
+                "notes": notes,
+                "action_logs": logs
+            }
+    except Exception as e:
+        logger.error(f"Error fetching full state: {e}")
+        return {"tasks": [], "calendar_events": [], "notes": [], "action_logs": []}
